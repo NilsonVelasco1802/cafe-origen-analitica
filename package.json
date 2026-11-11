@@ -1,0 +1,20 @@
+{
+  "name": "cafe-origen-analitica",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NilsonVelasco1802/cafe-origen-analitica.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NilsonVelasco1802/cafe-origen-analitica/issues"
+  },
+  "homepage": "https://github.com/NilsonVelasco1802/cafe-origen-analitica#readme"
+}
