@@ -1,6 +1,7 @@
 //importacion
 const ventas = require('./datos.js');
 
+
 /* reto 1 */
 console.log("Cantidad de registros:", ventas.length);
 
@@ -11,4 +12,5 @@ console.log("Último registro:", ventas[ventas.length - 1]);
 console.log("Producto en la posición 4:", ventas[4].producto);
 
 console.table(ventas);
+
 
