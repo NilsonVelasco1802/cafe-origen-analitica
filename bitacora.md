@@ -18,8 +18,22 @@
 
 - Propiedad: producto
 - Tipo: String
-- significado: origen mas cantidad de la venta
+- significado: origen mas cantidad de la venta.
 
-- Propiedad: id
+- Propiedad: ciudad
+- Tipo: String
+- significado: origen de la venta.
+
+- Propiedad: cantidad
 - Tipo: int
-- significado: valor unico asosiado a cada venta.
+- significado: cantidad de productos comprados
+
+- Propiedad: precio
+- Tipo: int
+- significado: valor del producto por unidad
+
+## Erroes encontrados en los datos
+
+ -1. cantidad de cliente C06 tiene una venta con cantidad cero
+ -2. se encuentra medellin en minuscula con el id: 5
+ -3. la fecah esta en formato String 
