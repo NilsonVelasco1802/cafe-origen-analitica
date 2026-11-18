@@ -74,10 +74,41 @@ function ventasPorCiudad(ventas, ciudad){
   return totalVen;
 }
 
-
+/*
 console.log("Total vendido:");
 console.log(totalVendido(ventas));
 console.log(unidadesVendidas(ventas[0].producto));
 console.log(ventaMayor(ventas));
 console.log(ticketPromedio(ventas));
 console.log(ventasPorCiudad(ventas,"Medellín"));
+*/
+
+
+const ventaUnica = [ventas[0]];
+const ventasVacias = [];
+
+// TOTAL VENDIDO
+console.log("Total completo:", totalVendido(ventas));
+console.log("Total una venta:", totalVendido(ventaUnica));
+console.log("Total vacío:", totalVendido(ventasVacias));
+
+// UNIDADES VENDIDAS
+console.log(unidadesVendidas("Origen Huila 500 g")); // 7
+console.log(unidadesVendidas("Prensa francesa"));    // 2
+console.log(unidadesVendidas("Molino manual"));      // 1
+console.log(unidadesVendidas("Producto inexistente")); // 0
+
+// VENTA MAYOR
+console.log("Mayor completo:", ventaMayor(ventas));
+console.log("Mayor una venta:", ventaMayor(ventaUnica));
+console.log("Mayor vacío:", ventaMayor(ventasVacias));
+
+// TICKET PROMEDIO
+console.log("Promedio completo:", ticketPromedio(ventas));
+console.log("Promedio una venta:", ticketPromedio(ventaUnica));
+console.log("Promedio vacío:", ticketPromedio(ventasVacias));
+
+// VENTAS POR CIUDAD
+console.log("Ciudad completo:", ventasPorCiudad(ventas, "Medellín"));
+console.log("Ciudad una venta:", ventasPorCiudad(ventaUnica, "Medellín"));
+console.log("Ciudad vacío:", ventasPorCiudad(ventasVacias, "Medellín"));
