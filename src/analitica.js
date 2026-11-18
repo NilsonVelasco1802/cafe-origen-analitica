@@ -194,6 +194,11 @@ function topProductosPorValor(ventas, k) {
 }
 
 
+function ventasDelDia(ventas, fecha) {
+    return ventas.filter(venta => venta.fecha === fecha);
+}
+
+
 
 // EXPORTAR FUNCIONES
 
@@ -209,5 +214,6 @@ module.exports = {
     unidadesPorProducto,
     topProductosPorValor,
     valorVen,
+    ventasDelDia,
     ventas
 };
