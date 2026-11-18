@@ -1,9 +1,7 @@
 const ventas  = require('./datos.js');
 
 
-const valorVen = (venta) =>{
-  return venta.cantidad * venta.precio;
-}
+const valorVen = (venta) =>{return venta.cantidad * venta.precio;}
 
 const totalVendido = (ventas) => {
   let total = 0;
@@ -32,27 +30,36 @@ function unidadesVendidas(producto){
   return unidadesVendidas;
 }
 
-function ventaMayor(ventas){
-  let ventaMayor= 0; 
-  for (const venta of ventas) {
-    if(valorVen(venta) > ventaMayor){
-      ventaMayor = valorVen(venta)
+function ventaMayor(ventas) {
+    if (ventas.length === 0) {
+        return null;
     }
-  }
-  return ventaMayor;
+
+    let mayor = ventas[0];
+
+    for (const venta of ventas) {
+        if (valorVen(venta) > valorVen(mayor)) {
+            mayor = venta;
+        }
+    }
+
+    return mayor;
 }
 
 function ticketPromedio(ventas){
   let total= 0;
-  let promedio= 0;
   let contador= 0; 
   for (const venta of ventas) {
     if(valorVen(venta) >0){
       total += valorVen(venta)
       contador++
     }
+
+    if (contador === 0) {
+        return null;
+    }
   }
-  return promedio = total/contador
+  return  total/contador
 }
 
 function ventasPorCiudad(ventas, ciudad){
