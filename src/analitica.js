@@ -112,3 +112,102 @@ console.log("Promedio vacío:", ticketPromedio(ventasVacias));
 console.log("Ciudad completo:", ventasPorCiudad(ventas, "Medellín"));
 console.log("Ciudad una venta:", ventasPorCiudad(ventaUnica, "Medellín"));
 console.log("Ciudad vacío:", ventasPorCiudad(ventasVacias, "Medellín"));
+
+
+
+
+// VERSIONES CON MÉTODOS DE ARREGLO
+
+
+
+const totalVendidoM = (ventas) => {
+    return ventas
+        .filter(venta => venta.precio > 0 && venta.cantidad > 0)
+        .reduce((total, venta) => total + valorVen(venta), 0);
+};
+
+
+
+function unidadesVendidasM(producto) {
+    return ventas
+        .filter(venta => venta.producto === producto && venta.cantidad > 0)
+        .reduce((total, venta) => total + venta.cantidad, 0);
+}
+
+
+
+function ventasPorCiudadM(ventas, ciudad) {
+    return ventas
+        .filter(venta =>
+            venta.ciudad.trim().toLowerCase() === ciudad.trim().toLowerCase()
+            && valorVen(venta) > 0
+        )
+        .reduce((total, venta) => total + valorVen(venta), 0);
+}
+
+
+// AGRUPACIONES
+
+
+
+function totalPorCiudad(ventas) {
+    return ventas.reduce((totales, venta) => {
+        const ciudad = venta.ciudad.trim().toLowerCase();
+
+        if (valorVen(venta) > 0) {
+            totales[ciudad] = (totales[ciudad] || 0) + valorVen(venta);
+        }
+
+        return totales;
+    }, {});
+}
+
+
+
+function unidadesPorProducto(ventas) {
+    return ventas.reduce((totales, venta) => {
+        if (venta.cantidad > 0) {
+            totales[venta.producto] =
+                (totales[venta.producto] || 0) + venta.cantidad;
+        }
+
+        return totales;
+    }, {});
+}
+
+
+
+function topProductosPorValor(ventas, k) {
+    const totales = ventas.reduce((resultado, venta) => {
+        if (valorVen(venta) > 0) {
+            resultado[venta.producto] =
+                (resultado[venta.producto] || 0) + valorVen(venta);
+        }
+
+        return resultado;
+    }, {});
+
+    return Object.entries(totales)
+        .map(([producto, total]) => ({ producto, total }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, Math.max(0, k));
+}
+
+
+
+// EXPORTAR FUNCIONES
+
+
+module.exports = {
+    totalVendido,
+    totalVendidoM,
+    unidadesVendidas,
+    unidadesVendidasM,
+    ventasPorCiudad,
+    ventasPorCiudadM,
+    totalPorCiudad,
+    unidadesPorProducto,
+    topProductosPorValor,
+    valorVen,
+    ventas
+};
