@@ -224,3 +224,74 @@ Se realizaron pruebas para comprobar que ambos problemas ya no aparecen en las f
 - El acumulador inicia en cero.
 - El promedio comprueba que existan ventas antes de dividir.
 - Los días sin ventas muestran un total de $0 y un mensaje informativo.
+
+
+
+# Bitácora de análisis de operaciones
+
+## 1. Predicción inicial
+
+Antes de realizar las mediciones, considero que las funciones `totalVendido`, `ventaMayor` y `totalPorCiudad` tienen un crecimiento lineal O(n), porque recorren el arreglo de ventas una sola vez.
+
+Mi predicción es que, si multiplicamos por 10 la cantidad de ventas, el número de operaciones de cada función también se multiplicará aproximadamente por 10.
+
+### Predicción por función
+
+| Función | Complejidad esperada | Predicción |
+|---|---|---|
+| totalVendido | O(n) | Las operaciones se multiplican por 10. |
+| ventaMayor | O(n) | Las operaciones y comparaciones se multiplican aproximadamente por 10. |
+| totalPorCiudad | O(n) | Las operaciones se multiplican por 10. |
+
+### Justificación
+
+- **totalVendido:** recorre todas las ventas para calcular el valor total. Por cada venta realiza una visita.
+- **ventaMayor:** recorre las ventas para encontrar la de mayor valor. Realiza una comparación por cada elemento después del primero.
+- **totalPorCiudad:** recorre todas las ventas para acumular el dinero vendido en cada ciudad. Realiza una visita por cada venta.
+
+### Ejemplo de mi predicción
+
+Si comenzamos con 100 ventas y después aumentamos a 1.000 ventas, espero obtener:
+
+| Función | 100 ventas | 1.000 ventas |
+|---|---:|---:|
+| totalVendido | 100 operaciones | 1.000 operaciones |
+| ventaMayor | 99 operaciones | 999 operaciones |
+| totalPorCiudad | 100 operaciones | 1.000 operaciones |
+
+### Conclusión inicial
+
+Mi hipótesis es que las tres funciones presentan complejidad temporal lineal O(n). Espero comprobarlo mediante el contador de operaciones, observando cómo aumenta el trabajo cuando crece la cantidad de ventas.
+
+Esta es una predicción inicial y deberá compararse con los resultados reales de las mediciones.
+
+
+
+## 2. Comparación entre complejidad constante y lineal
+
+Se agregó la función `primeraVenta(ventas)`, cuya finalidad es devolver la primera venta del arreglo.
+
+Esta función tiene complejidad constante O(1), porque solamente accede a una posición específica del arreglo y realiza siempre una cantidad fija de operaciones.
+
+### Resultados esperados
+
+| n | primeraVenta | Funciones lineales |
+|---:|---:|---:|
+| 100 | 1 | Aproximadamente 100 |
+| 1.000 | 1 | Aproximadamente 1.000 |
+| 10.000 | 1 | Aproximadamente 10.000 |
+| 100.000 | 1 | Aproximadamente 100.000 |
+
+### Análisis
+
+La función `primeraVenta` mantiene el mismo número de operaciones aunque aumente la cantidad de ventas.
+
+En cambio, `totalVendido`, `ventaMayor` y `totalPorCiudad` aumentan sus operaciones proporcionalmente al tamaño del arreglo.
+
+### Conclusión
+
+La complejidad constante O(1) realiza un trabajo que no depende del tamaño de los datos.
+
+La complejidad lineal O(n) aumenta su trabajo conforme aumenta la cantidad de elementos.
+
+Por lo tanto, para grandes cantidades de datos, una función O(1) necesita muchas menos operaciones que una función O(n).
