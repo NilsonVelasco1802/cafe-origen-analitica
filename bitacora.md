@@ -295,3 +295,212 @@ La complejidad constante O(1) realiza un trabajo que no depende del tamaño de l
 La complejidad lineal O(n) aumenta su trabajo conforme aumenta la cantidad de elementos.
 
 Por lo tanto, para grandes cantidades de datos, una función O(1) necesita muchas menos operaciones que una función O(n).
+
+
+
+## 3. Comparación de predicciones con resultados
+
+Después de ejecutar las mediciones con 100, 1.000, 10.000 y 100.000 ventas, comparé los resultados con mis predicciones iniciales.
+
+### Clasificación de las funciones
+
+| Función | Complejidad | Justificación |
+|---|---|---|
+| totalVendido | O(n) | Recorre todas las ventas una vez. |
+| ventaMayor | O(n) | Recorre las ventas y compara sus valores. |
+| totalPorCiudad | O(n) | Recorre todas las ventas y acumula sus valores por ciudad. |
+| primeraVenta | O(1) | Accede directamente a la primera posición del arreglo. |
+
+### Comparación de resultados
+
+Los resultados demostraron que las funciones lineales aumentan sus operaciones proporcionalmente al tamaño de los datos.
+
+Por ejemplo, al pasar de 100 a 100.000 ventas, totalVendido y totalPorCiudad pasan de 100 a 100.000 operaciones.
+
+En ventaMayor se pasa de 99 a 99.999 operaciones, porque el primer elemento se utiliza como referencia inicial.
+
+Por otro lado, primeraVenta mantiene una sola operación independientemente de la cantidad de ventas.
+
+### Análisis de complejidad cuadrática O(n²)
+
+Ninguna de las funciones analizadas presenta complejidad O(n²), porque no utilizan ciclos anidados que recorran repetidamente el arreglo completo.
+
+### Conclusión final
+
+Mis predicciones iniciales se cumplieron con los resultados obtenidos.
+
+Identifiqué una función de complejidad constante O(1) y tres funciones de complejidad lineal O(n).
+
+Este ejercicio me permitió comprobar que el crecimiento de los datos influye directamente en el trabajo que realizan las funciones y que una función constante mantiene su cantidad de operaciones aunque aumente el tamaño del historial de ventas.
+
+
+# Traza de `clientesRecurrentes`
+
+## Objetivo
+
+Seguir la ejecución de la función `clientesRecurrentes` con un arreglo
+de 5 ventas, contar las comparaciones entre clientes y generalizar el
+número de comparaciones para `n` ventas.
+
+## Datos de prueba
+
+``` javascript
+const ventas = [
+  { id: 1, cliente: "C01" },
+  { id: 2, cliente: "C02" },
+  { id: 3, cliente: "C01" },
+  { id: 4, cliente: "C03" },
+  { id: 5, cliente: "C02" }
+];
+```
+
+## Traza de las comparaciones
+
+El ciclo externo selecciona una venta con `i`. El ciclo interno comienza
+en `j = i + 1`, así que compara esa venta solamente con las ventas que
+aparecen después.
+
+    `i`   `j` Comparación   ¿Coinciden?
+  ----- ----- ------------- -------------
+      0     1 C01 == C02    No
+      0     2 C01 == C01    Sí
+      0     3 C01 == C03    No
+      0     4 C01 == C02    No
+      1     2 C02 == C01    No
+      1     3 C02 == C03    No
+      1     4 C02 == C02    Sí
+      2     3 C01 == C03    No
+      2     4 C01 == C02    No
+      3     4 C03 == C02    No
+
+**Total: 10 comparaciones** de igualdad entre clientes.
+
+En este ejemplo, los clientes recurrentes que se encuentran son `C01` y
+`C02`. La lista de clientes recurrentes no cambia el número de
+comparaciones que realizan los dos ciclos; la condición `includes()` sí
+hace comprobaciones adicionales para evitar agregar un cliente más de
+una vez, pero no se cuentan como comparaciones entre ventas.
+
+## Generalización para `n` ventas
+
+Con `n` ventas, el número de comparaciones es:
+
+-   Para la primera venta: `n - 1`
+-   Para la segunda venta: `n - 2`
+-   Para la tercera venta: `n - 3`
+-   ...
+-   Para la penúltima venta: `1`
+-   Para la última venta: `0`
+
+Por tanto:
+
+\[ C(n) = (n-1) + (n-2) + `\cdots `{=tex}+ 2 + 1 \]
+
+La suma de los primeros `n - 1` números naturales es:
+
+\[ C(n) = `\frac{n(n-1)}{2}`{=tex} \]
+
+Para `n = 5`:
+
+\[ C(5) = `\frac{5(5-1)}{2}`{=tex} = `\frac{20}{2}`{=tex} = 10 \]
+
+## Conclusión
+
+La función realiza:
+
+\[ `\boxed{\frac{n(n-1)}{2}}`{=tex} \]
+
+comparaciones de igualdad entre clientes. Esto crece de forma
+cuadrática, por lo que su complejidad temporal se expresa como
+**O(n²)**. Cuando se duplica la cantidad de ventas, el número de
+comparaciones aumenta aproximadamente cuatro veces para volúmenes
+grandes.
+
+
+## Análisis de los tiempos de ejecución
+
+Se realizaron pruebas con diferentes cantidades de ventas utilizando `console.time()` y `console.timeEnd()` para medir el tiempo que tarda la función `clientesRecurrentes()`.
+
+### Tabla de resultados
+
+| Número de ventas (n) | Tiempo de ejecución | Aumento respecto a la prueba anterior |
+|---:|---:|---:|
+| 1.000 | 5,088 ms | — |
+| 2.000 | 10,1 ms | 1,98 veces |
+| 4.000 | 44,013 ms | 4,36 veces |
+| 8.000 | 171,39 ms | 3,89 veces |
+| 16.000 | 587,927 ms | 3,43 veces |
+
+### Análisis
+
+Al analizar los resultados, se observa que cuando se duplica la cantidad de ventas, el tiempo de ejecución aumenta aproximadamente cuatro veces, especialmente en los volúmenes más grandes.
+
+Esto sucede porque la función tiene dos ciclos anidados que comparan los clientes de las ventas. Por lo tanto, al aumentar los registros, también aumenta considerablemente el número de comparaciones.
+
+Por ejemplo:
+
+- 1.000 ventas: 499.500 comparaciones.
+- 2.000 ventas: 1.999.000 comparaciones.
+- 4.000 ventas: 7.998.000 comparaciones.
+- 8.000 ventas: 31.996.000 comparaciones.
+- 16.000 ventas: 127.992.000 comparaciones.
+
+### Relación con la complejidad O(n²)
+
+La función tiene una complejidad temporal O(n²), porque el número de comparaciones crece de forma cuadrática respecto a la cantidad de ventas.
+
+Cuando duplicamos la cantidad de registros, las comparaciones se multiplican aproximadamente por cuatro.
+
+### Conclusión
+
+Los resultados demuestran que la función funciona correctamente con pocos registros, pero su rendimiento disminuye cuando aumenta el volumen de información.
+
+Esto explica por qué la gerente experimentó demoras al ejecutar el reporte con el historial anual. Es necesario optimizar la función para reducir las comparaciones y mejorar el tiempo de ejecución cuando se procesan grandes cantidades de ventas.
+## Costo oculto: método `recurrentes.includes()`
+
+Al analizar la función `clientesRecurrentes()`, encontramos un costo oculto en la siguiente instrucción:
+
+```javascript
+!recurrentes.includes(ventas[i].cliente)
+```
+
+El método `includes()` busca si un cliente ya existe dentro del arreglo `recurrentes`. Para hacerlo, debe recorrer sus elementos hasta encontrarlo o llegar al final.
+
+### ¿Cómo afecta la complejidad?
+
+En el peor caso, cuando existen muchos clientes recurrentes, el arreglo `recurrentes` puede crecer hasta tener una gran cantidad de elementos.
+
+Esto significa que cada vez que se ejecuta `includes()`, puede necesitar recorrer una gran parte del arreglo.
+
+Por lo tanto, no solamente tenemos los dos ciclos anidados, sino también una búsqueda adicional dentro de otro arreglo.
+
+Si hay `n` ventas y muchos clientes recurrentes, el costo acumulado de las búsquedas con `includes()` puede llegar a ser O(n²).
+
+Sumado al costo de los ciclos anidados, el peor caso sigue siendo de complejidad O(n²), aunque aumenta considerablemente la cantidad de operaciones realizadas.
+
+### Resultados de las pruebas
+
+| Número de ventas | Tiempo de ejecución |
+|---:|---:|
+| 100.000 | 32,085 segundos |
+| 1.000.000 | 55 minutos y 0,914 segundos |
+
+Los resultados muestran que el tiempo aumenta considerablemente cuando crece el volumen de información.
+
+### Conclusión
+
+El método `includes()` representa un costo oculto porque realiza búsquedas lineales dentro del arreglo de clientes recurrentes.
+
+Aunque la complejidad general de la función continúa siendo O(n²), estas búsquedas adicionales aumentan el tiempo real de ejecución.
+
+Una posible solución es utilizar un `Set` de JavaScript, porque permite consultar si un cliente ya existe con un costo promedio de O(1). Esto ayudaría a reducir el costo de las búsquedas y mejorar el rendimiento del reporte.
+
+## Conclusión para la gerente
+
+El reporte de clientes recurrentes se vuelve lento porque, a medida que aumenta la cantidad de ventas, el sistema necesita realizar muchas más comparaciones para identificar qué clientes han comprado varias veces.
+
+En las pruebas realizadas, con 100.000 ventas el reporte tardó aproximadamente 32 segundos, mientras que con 1.000.000 de ventas tardó cerca de 55 minutos.
+
+Esto significa que el sistema funciona bien con cantidades pequeñas de información, pero pierde velocidad cuando debe procesar grandes historiales de ventas.
+
+Por esta razón, recomendamos optimizar el funcionamiento del reporte para que pueda analizar la información de manera más rápida y entregar resultados oportunos, incluso cuando la empresa tenga millones de registros.
