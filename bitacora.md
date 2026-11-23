@@ -504,3 +504,212 @@ En las pruebas realizadas, con 100.000 ventas el reporte tardó aproximadamente 
 Esto significa que el sistema funciona bien con cantidades pequeñas de información, pero pierde velocidad cuando debe procesar grandes historiales de ventas.
 
 Por esta razón, recomendamos optimizar el funcionamiento del reporte para que pueda analizar la información de manera más rápida y entregar resultados oportunos, incluso cuando la empresa tenga millones de registros.
+
+
+# Bitácora: cadena de métodos vs. una sola pasada
+
+## Resultado de la ejecución
+
+Ambas funciones calculan el mismo total: **486.818.000**. Además, la comparación devuelve `true`, así que las dos versiones producen el mismo resultado.
+
+## 1. Comparación de recorridos, arreglos y complejidad
+
+### Versión con métodos encadenados
+
+Utiliza `map()`, `filter()`, otro `map()` y `reduce()`.
+
+- **Recorridos:** realiza 4 recorridos sobre los datos. Cada método recorre el arreglo que recibe; el segundo `map()` y el `reduce()` trabajan con los elementos que quedaron después del filtro.
+- **Arreglos nuevos:** crea 3 arreglos:
+  1. El primer `map()` crea un arreglo con las ventas y sus ciudades normalizadas.
+  2. El `filter()` crea otro arreglo con las ventas de la ciudad seleccionada.
+  3. El segundo `map()` crea un arreglo con los valores de las ventas.
+- `reduce()` suma los valores, pero no crea otro arreglo.
+
+**Complejidad:**
+
+- **Tiempo:** O(n), porque realiza una cantidad constante de recorridos lineales.
+- **Espacio:** O(n), porque crea arreglos adicionales cuyo tamaño puede crecer según la cantidad de ventas.
+
+### Versión con una sola pasada
+
+Utiliza un ciclo `for` para revisar las ventas y acumular el total de la ciudad solicitada.
+
+- **Recorridos:** realiza 1 recorrido completo de las ventas.
+- **Arreglos nuevos:** crea 0 arreglos adicionales.
+- Solo utiliza variables para guardar la ciudad buscada y acumular el total.
+
+**Complejidad:**
+
+- **Tiempo:** O(n), porque revisa cada venta una sola vez.
+- **Espacio:** O(1), porque utiliza una cantidad constante de memoria adicional, sin importar cuántas ventas existan.
+
+## 2. Tabla comparativa
+
+| Característica       | Con cadena | Una pasada  |
+| -------------------- | ---------- | ----------- |
+| Recorridos           | 4 etapas   | 1           |
+| Arreglos nuevos      | 3          | 0           |
+| Complejidad temporal | O(n)       | O(n)        |
+| Complejidad espacial | O(n)       | O(1)        |
+| Resultado            | 486.818.000 | 486.818.000 |
+
+## 3. Por qué ambas son O(n) aunque una recorra cuatro veces
+
+Cuatro recorridos parecen más trabajo que uno, y en operaciones reales lo son. Pero la notación O mide **cómo crece** el trabajo cuando crecen los datos, no cuántas operaciones exactas se hacen. Para eso se aplican dos reglas de simplificación.
+
+### Paso 1: contar el trabajo de cada versión
+
+Con `n` ventas, y `m` las ventas que sobreviven al filtro (`m ≤ n`):
+
+| Etapa de la cadena | Elementos que recorre |
+| ------------------ | --------------------- |
+| `map()` (normalizar ciudad) | n |
+| `filter()` | n |
+| `map()` (extraer valores) | m |
+| `reduce()` | m |
+
+- **Cadena:** T(n) = n + n + m + m ≤ 4n
+- **Una pasada:** T(n) = n
+
+### Paso 2: aplicar las reglas
+
+1. **Regla de la suma:** los recorridos que se ejecutan uno después de otro se suman (n + n + m + m), y de la suma se conserva el término dominante. Aquí todos los términos crecen linealmente, así que el resultado sigue siendo lineal.
+2. **Regla de las constantes:** se eliminan los factores multiplicativos, porque no cambian la forma de la curva. Entonces O(4n) = O(n).
+
+Formalmente, f(n) = O(g(n)) si existen una constante `c` y un tamaño `n₀` tales que f(n) ≤ c · g(n) para todo n ≥ n₀. En la cadena, f(n) ≤ 4n, así que basta tomar c = 4 y g(n) = n. Por eso la cadena es O(n), igual que la versión de una pasada (donde c = 1).
+
+### Paso 3: qué dice y qué no dice esto
+
+Que ambas sean O(n) **no significa que hagan exactamente el mismo trabajo**. Significa que el crecimiento tiene la misma forma: al multiplicar los datos por 10, el trabajo de ambas se multiplica por 10.
+
+| Tamaño n | Operaciones cadena (≈ 4n) | Operaciones una pasada (≈ n) | Razón |
+| -------- | ------------------------- | ---------------------------- | ----- |
+| 1.000    | 4.000                     | 1.000                        | 4     |
+| 10.000   | 40.000                    | 10.000                       | 4     |
+| 100.000  | 400.000                   | 100.000                      | 4     |
+
+La razón entre las dos versiones se mantiene en 4 sin importar el tamaño: la constante cambia el costo, pero no el crecimiento. En cambio, un recorrido **anidado** (un ciclo dentro de otro) haría n · n operaciones, y ahí sí cambiaría la forma de la curva a O(n²), algo que ninguna constante puede absorber.
+
+## 4. Conclusión para la bitácora
+
+La versión con métodos encadenados y la versión de una sola pasada producen el mismo resultado, como demuestra la comparación que devuelve `true`. Sin embargo, la versión encadenada crea tres arreglos adicionales y necesita más memoria para procesar la información. La versión de una sola pasada recorre las ventas una única vez y no crea arreglos adicionales.
+
+Por lo tanto, la versión de una sola pasada es más eficiente en el uso de memoria, ya que tiene complejidad espacial O(1), mientras que la versión encadenada tiene O(n). Ambas tienen complejidad temporal O(n), pero la versión de una sola pasada también evita recorridos y operaciones intermedias innecesarias.
+
+# Complejidad espacial del motor de ventas
+
+Bitácora · clasificación de memoria adicional: O(1), O(k) y O(n)
+
+## Alcance de este análisis
+
+Solo se revisaron las dos versiones de `totalCiudad`, así que esas se clasifican con certeza. De `totalPorCiudad` y `topProductosPorValor` no se tiene el código, y su clasificación depende de cómo estén escritas. Más abajo queda el criterio para verificarlas.
+
+## Las dos funciones revisadas
+
+| Función | Espacio adicional | Por qué |
+| --- | --- | --- |
+| `totalCiudadCadena` | **O(n)** | El primer `map()` crea un arreglo nuevo con n objetos, y cada uno es una copia de la venta (`...venta`). El `filter()` crea otro arreglo de hasta n elementos y el segundo `map()` uno de m números. |
+| `totalCiudadUnaPasada` | **O(1)** | Solo guarda `total`, `ciudadBuscada`, `i` y `ciudadVenta`. |
+
+Una precisión sobre la versión de una pasada: `toLowerCase().trim()` crea un string temporal en cada vuelta. Ese string mide lo que mide el nombre de la ciudad, no depende de n, y se descarta en la siguiente iteración. Por eso sigue siendo O(1) respecto a los datos.
+
+## Las dos funciones por revisar
+
+### `totalPorCiudad`
+
+Normalmente devuelve un objeto o `Map` con un total por ciudad. Su memoria no es proporcional a las ventas sino a las **ciudades distintas** (k):
+
+- Si solo acumula totales, el espacio es **O(k)**. Con el generador k = 4 y no crece con n, así que en la práctica se comporta como constante.
+- Formalmente k ≤ n, así que O(k) solo equivale a O(1) si el número de ciudades está acotado. Con datos sucios (`"medellín"` y `"Medellín"` como claves distintas) k crece sin que haya más ciudades reales.
+- Si en cambio agrupa las ventas por ciudad (guarda listas de ventas) para sumar después, es **O(n)**.
+
+### `topProductosPorValor`
+
+Normalmente acumula el valor por producto, ordena y toma los primeros k. Hay que mirar cada paso:
+
+- El acumulador (`Map` producto → valor) ocupa **O(p)**, con p productos distintos. En el catálogo actual p = 5.
+- Convertirlo con `Array.from` y ordenarlo usa otro O(p). Ojo con que `sort()` no garantiza O(1) de memoria extra, así que cuenta como O(p).
+- El `slice(0, k)` del resultado agrega O(k).
+- Si en cambio ordena una copia de las ventas (`[...ventas].sort(...)`), el espacio es **O(n)**.
+
+## Cómo clasificar el resto del motor
+
+1. Si solo hay acumuladores escalares (sumas, contadores, máximos), es **O(1)**.
+2. Si hay un `Map` u objeto indexado por una clave, es **O(k)**, con k las claves distintas. Hay que aclarar si k está acotado (ciudades, productos) o crece con n (clientes, ids, fechas).
+3. Si se crea un arreglo del tamaño de las ventas (`map`, `filter`, `[...ventas]`, `sort` sobre una copia), es **O(n)**.
+
+## Pendiente
+
+Pasar el código de `totalPorCiudad`, `topProductosPorValor` y las demás funciones del motor para completar la clasificación.
+
+# Decisión: versión de `totalCiudad` en el motor
+
+## Decisión
+
+Se deja **`totalCiudadUnaPasada`** en el motor. La versión con cadena (`totalCiudadCadena`) se conserva solo en las pruebas, como referencia para verificar resultados.
+
+## Legibilidad
+
+La cadena es más declarativa. Se lee como una receta: normalizar, filtrar, calcular el valor, sumar. Cada etapa hace una sola cosa, y eso ayuda a quien la lee por primera vez.
+
+Pero la versión de una pasada no es mucho más difícil. Son unas 8 líneas, con un acumulador y un `if`, y cualquier persona que sepa JavaScript la entiende de un vistazo. La ventaja de legibilidad de la cadena existe, pero aquí es pequeña.
+
+## Recursos
+
+| Criterio | Cadena | Una pasada |
+| --- | --- | --- |
+| Operaciones (n ventas) | ≈ 4n | ≈ n |
+| Tiempo | O(n) | O(n) |
+| Espacio adicional | O(n) | O(1) |
+| Arreglos nuevos | 3 | 0 |
+
+Aunque las dos son O(n) en tiempo, el trabajo real de la cadena se multiplica por unas 4 veces. En memoria la diferencia es de crecimiento, no de constante: para 100.000 ventas, la cadena crea 100.000 objetos copiados con `...venta` solo para cambiar el nombre de la ciudad, además de dos arreglos más. Esos objetos aumentan la presión sobre el recolector de basura.
+
+## Por qué gana la una pasada
+
+El motor está pensado para crecer, y la premisa del equipo es medir cuánto crece el trabajo, no suponer que es rápido. Cuando una versión es casi tan legible y claramente más barata, la decisión es fácil. Con 12 ventas daría igual, pero con historiales grandes la cadena paga memoria y operaciones por una claridad que casi no aporta.
+
+La cadena habría ganado si la función fuera mucho más compleja, con muchas etapas y condiciones, porque ahí una cadena bien nombrada se mantiene mejor que un ciclo largo. No es el caso.
+
+## Ajustes recomendados
+
+1. **Extraer la normalización** a una función pequeña, por ejemplo `normalizar(texto)`, para que no se repita `toLowerCase().trim()` y la intención quede explícita. Así se recupera parte de la legibilidad de la cadena sin pagar su costo.
+2. **Guardar la cadena en las pruebas** como "oráculo": una implementación simple y obvia para comprobar que la versión optimizada devuelve lo mismo. La comparación que devolvió `true` ya cumple ese papel.
+
+# Bitácora — Informe de rendimiento (`RENDIMIENTO.md`)
+
+
+## Entrada 1 — Revisión por pares
+
+- **Fecha:** 22 de noviembre de 2026
+- **Documento revisado:** `RENDIMIENTO.md` (tabla de rendimiento, evidencia de escalamiento, priorización, proyección, riesgos y plan de optimización)
+- **Revisor:** compañero de equipo (simulado)
+
+### Observaciones del revisor
+
+| # | Observación | Severidad |
+|---|---|---|
+| O1 | En "Proyección", la columna "Rango proyectado" parece un intervalo de confianza, pero el valor medido con 1.000.000 de ventas queda **fuera** del rango en la mayoría de funciones. Un lector del marketplace podría confiar en un rango que no cumple. | Alta |
+| O2 | El puesto #1 de "Riesgos" y todo el "Plan de optimización" tratan una función (`clientesRecurrentes`) que **no está en el código entregado**. Se aclara al final de la sección, pero un lector que solo mire la tabla puede creer que el defecto está en el motor. | Media |
+| O3 | Todos los tiempos son la mediana de una sola máquina y una sola serie de ejecuciones; no se muestra la dispersión (mínimo, máximo o percentiles). Con las irregularidades vistas a 100.000–400.000 ventas, no se sabe cuánta confianza dar a cada número. | Media |
+| O4 | `ticketPromedio` aparece en el puesto #14 con nivel "Bajo", aunque es la única función con un error de resultado. El ranking puede dar la impresión de que es la menos importante. | Baja |
+
+### Respuestas de la autora
+
+**O1 — Aceptada y corregida.** Revisé la tabla contra las mediciones: el valor medido cayó dentro del rango en 5 de 13 funciones (`ventasDelDia`, `unidadesPorProducto`, `topProductosPorValor`, `ventasPorCiudad`, `totalPorCiudad`); en 7 quedó por encima (`totalVendido`, `ventaMayor`, `ticketPromedio`, `unidadesVendidas`, `unidadesVendidasM`, `totalVendidoM`, `clientesRecurrentes`) y en 1 por debajo (`ventasPorCiudadM`). El rango solo comparaba dos bases de extrapolación (10.000 y 40.000), así que el nombre era engañoso.
+*Cambios:* la columna ahora se llama "Rango de extrapolación"; el método aclara que no es un intervalo de confianza; y se agregó una línea en "Cómo leer la tabla" con el 5 de 13 y la indicación de usar la columna "medido" para planificar.
+
+**O2 — Aceptada parcialmente.** Tiene razón en que el aviso estaba escondido al final. No quité las filas porque la función es un requisito del enunciado y el contraste O(n²) frente a `Map` es evidencia útil. *Cambios:* las filas 1 y 2 llevan ⚠️ y la leyenda "referencia; no está en el archivo entregado", y antes de la tabla agregué un párrafo de alcance que dice que, entre las funciones realmente entregadas, la de mayor riesgo es `totalVendidoM`. Queda pendiente confirmar con el código real de clientes recurrentes y remedirlo.
+
+**O3 — Aceptada, pendiente.** Es una limitación real y no la corregí en esta revisión. Propuesta: repetir las mediciones con 1.000.000 de ventas al menos 30 veces, en dos ejecuciones separadas del proceso, y reportar mediana, mínimo y percentil 95; luego comprobar si alguna conclusión de "Riesgos" cambia de orden. Hasta entonces, el informe ya advierte que los tiempos dependen de la máquina y que lo importante es el orden de magnitud.
+
+**O4 — Respondida sin cambios.** Mantengo la posición. La sección "Riesgos" ordena por **escalamiento de los datos** (tiempo, memoria, uso repetido), y el error de `ticketPromedio` no empeora al crecer los datos. Su gravedad ya está tratada como **prioridad 1** en "Priorización", y la fila #14 dice "Bajo (escala)" y remite a esa sección. Si el revisor prefiere que se vea en ambos lugares, puedo añadir una columna "riesgo funcional" separada, pero mezclarlo en un solo orden haría que el criterio dejara de ser consistente.
+
+### Estado de las observaciones
+
+| # | Estado | Cambio en `RENDIMIENTO.md` |
+|---|---|---|
+| O1 | Resuelta | Columna renombrada, aclaración del método y nota de lectura |
+| O2 | Resuelta parcialmente | ⚠️ en filas 1–2 y párrafo "Alcance del ranking"; falta remedir con el código real |
+| O3 | Pendiente | Ninguno todavía |
+| O4 | Rechazada con justificación | Ninguno |
