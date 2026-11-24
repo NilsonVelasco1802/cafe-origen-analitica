@@ -713,3 +713,50 @@ La cadena habría ganado si la función fuera mucho más compleja, con muchas et
 | O2 | Resuelta parcialmente | ⚠️ en filas 1–2 y párrafo "Alcance del ranking"; falta remedir con el código real |
 | O3 | Pendiente | Ninguno todavía |
 | O4 | Rechazada con justificación | Ninguno |
+
+## Optimización de `clientesRecurrentes`: tiempo vs. memoria
+
+### Qué cambió
+- **Original:** compara cada venta con todas las siguientes (dos bucles anidados) y usa `recurrentes.includes(...)` para evitar duplicados. Casi no usa memoria extra, pero hace del orden de n²/2 comparaciones.
+- **Set / Map:** recorren las ventas una sola vez. Para saber si un cliente ya apareció, consultan una estructura hash en tiempo prácticamente constante. Costo: O(n) en tiempo.
+
+### Resultados medidos (mediana de varias repeticiones)
+
+| Ventas | Original (ms) | Set (ms) | Map (ms) | Recurrentes |
+|---:|---:|---:|---:|---:|
+| 1.000 | 4.17 | 0.06 | 0.09 | 261 |
+| 10.000 | 483.66 | 0.66 | 0.52 | 2644 |
+| 100.000 | omitida | 11.37 | 10.19 | 26730 |
+
+- Al pasar de 1.000 a 10.000 ventas (×10), la original tardó ×116: crecimiento cuadrático, O(n²).
+- Set y Map crecieron entre ×6 y ×20 en cada salto de ×10: crecimiento aproximadamente lineal, O(n). Con sub-milisegundos hay ruido, así que no conviene leer los saltos con demasiada precisión.
+- Con 10.000 ventas, Set y Map son unas 700 a 900 veces más rápidos que la original.
+- Con 100.000 ventas la original se omitió. Extrapolando su comportamiento cuadrático, tardaría del orden de 50 segundos (estimación, no medición), frente a unos 10 ms de Set y Map.
+
+### El intercambio
+
+| Versión | Tiempo | Memoria extra |
+|---|---|---|
+| Original | O(n²) | O(r): solo el arreglo de resultados |
+| Set | O(n) | O(d + r): dos Sets (`vistos` y `recurrentes`) |
+| Map | O(n) | O(d + r): un Map con un contador por cliente, más el arreglo de resultados |
+
+n = ventas, d = clientes distintos, r = clientes recurrentes.
+
+La solución nueva **gasta memoria para ahorrar tiempo**: guarda en un hash a todos los clientes distintos que ha visto (d entradas) para no tener que volver a recorrer las ventas. La original no guarda nada de eso, y por eso paga con comparaciones repetidas.
+
+En este caso el trato es muy favorable. Los clientes distintos son una fracción de las ventas (en el generador, los recurrentes son cerca del 26 % de las ventas), así que la memoria extra crece linealmente, mientras que el tiempo ahorrado crece cuadráticamente.
+
+### Set vs. Map
+- Los tiempos son muy parecidos. En las mediciones de 10.000 y 100.000 ventas, Map salió un poco más rápido, pero la diferencia es pequeña y puede ser ruido. No es una razón para elegir una sobre otra.
+- Map guarda además **cuántas compras hizo cada cliente**, información que se puede reutilizar (por ejemplo, para ranking o umbrales distintos a "más de una"). Set solo guarda "visto / recurrente".
+- Set usa dos estructuras; Map usa una más el arreglo final. En orden de magnitud la memoria es equivalente.
+
+### Cuándo no valdría la pena
+- Con pocos datos (decenas o cientos de ventas) la diferencia es imperceptible y la versión original es aceptable.
+- Si los clientes distintos fueran tantos que el hash no cupiera en memoria, habría que procesar por lotes o usar una base de datos.
+
+### Limitaciones de esta medición
+- **La memoria no se midió**, solo se razonó por complejidad. Para medirla se puede usar `process.memoryUsage().heapUsed` antes y después, ejecutando con `node --expose-gc` y llamando a `global.gc()` antes de cada lectura.
+- La cifra de 126 ms de la original con 5.000 ventas viene de una sola ejecución con `console.time`, sin calentamiento, así que es menos confiable que la tabla.
+- Los tiempos dependen de mi equipo y del generador de datos (cuántos clientes distintos produce).

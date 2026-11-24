@@ -37,4 +37,4 @@ const resultado = clientesRecurrentes(ventas);
 
 console.log(resultado);
 
-module.exports = clientesRecurrentes;
+module.exports = {clientesRecurrentes};
