@@ -760,3 +760,87 @@ En este caso el trato es muy favorable. Los clientes distintos son una fracción
 - **La memoria no se midió**, solo se razonó por complejidad. Para medirla se puede usar `process.memoryUsage().heapUsed` antes y después, ejecutando con `node --expose-gc` y llamando a `global.gc()` antes de cada lectura.
 - La cifra de 126 ms de la original con 5.000 ventas viene de una sola ejecución con `console.time`, sin calentamiento, así que es menos confiable que la tabla.
 - Los tiempos dependen de mi equipo y del generador de datos (cuántos clientes distintos produce).
+
+
+### Pruebas de comboRegalo (fuerza bruta vs. Map)
+
+| Valor | Resultado | Comparaciones (bruta) | Iteraciones (Map) |
+|---:|---|---:|---:|
+| 87.000 | Huila 500 g + Sierra 500 g | 8 | 3 |
+| 61.000 | Nariño 250 g + Taza de cerámica | 4 | 5 |
+| 50.000 | null | 28 | 8 |
+| 52.000 | null (no se empareja un producto consigo mismo) | 28 | 8 |
+
+**Traza de comboRegaloMap(catalogo, 87000)**
+
+| Iter. | Producto | Precio | Complemento | ¿En vistos? | Acción |
+|---:|---|---:|---:|---|---|
+| 1 | Nariño 250 g | 26.000 | 61.000 | No | Guarda 26.000 |
+| 2 | Huila 500 g | 42.000 | 45.000 | No | Guarda 42.000 |
+| 3 | Sierra 500 g | 45.000 | 42.000 | Sí (Huila 500 g) | Devuelve el par |
+
+**Observaciones**
+- Ambas versiones coinciden en existencia y en suma correcta en los 4 casos.
+- Cuando no hay combinación (50.000), la fuerza bruta hace las 28 comparaciones
+  y el Map recorre los 8 productos: es el peor caso de cada una.
+- Que una versión termine antes depende de la posición de los productos, no de
+  su complejidad. Con 61.000 la fuerza bruta necesitó menos pasos (4 contra 5).
+  Con 8 productos eso no importa; la diferencia O(n²) contra O(n) solo se nota
+  con catálogos grandes.
+- Con 121.000 hay dos combinaciones válidas y cada versión devuelve una distinta.
+
+
+## Clasificación de complejidad de las tres funciones
+
+Notación:
+- **n** = productos del catálogo (solo en `comboRegalo`)
+- **v** = ventas
+- **d** = clientes distintos (d ≤ v)
+- **k** = pares ciudad-producto distintos (k ≤ v)
+- **c** = ciudades distintas (c ≤ k)
+
+Las operaciones `get`, `set` y `has` de un Map cuestan O(1) en promedio, y el análisis se apoya en eso.
+
+### Resumen
+
+| Función | Tiempo | Memoria extra | Clase |
+|---|---|---|---|
+| `comboRegaloMap(catalogo, valor)` | O(n) | O(n) | Lineal |
+| `productoEstrellaPorCiudad(ventas)` | O(v) | O(k) | Lineal |
+| `primerClienteUnico(ventas)` | O(v) | O(d) | Lineal |
+
+### Detalle por función
+
+**comboRegaloMap**
+- Una sola pasada sobre el catálogo. Cada iteración hace una consulta y, si no hay complemento, una inserción en el Map.
+- Mejor caso: termina en la 2.ª iteración (el complemento es el primer producto). Peor caso: no hay combo y recorre los n productos.
+- Memoria: el Map guarda un precio por producto, O(n).
+- Versión por fuerza bruta: O(n²) en tiempo y O(1) en memoria.
+
+**productoEstrellaPorCiudad**
+- Paso 1: recorre las v ventas y actualiza el Map de la ciudad y el Map de producto. Son O(v).
+- Paso 2: recorre los k pares ciudad-producto para elegir el máximo de cada ciudad. Son O(k), y como k ≤ v, el total sigue siendo O(v).
+- `normalizarCiudad` cuesta proporcional al largo del nombre, que aquí es corto y acotado, así que se trata como O(1).
+- Memoria: los Maps guardan k conteos y c ciudades, O(k). Con pocas ciudades y productos, k es mucho menor que v.
+- Alternativa sin Map (filtrar las ventas por cada ciudad y contar cada producto): del orden de O(v · c · p), con p = productos distintos.
+
+**primerClienteUnico**
+- Recorrido 1: cuenta a todos los clientes, siempre completo, O(v).
+- Recorrido 2: busca el primero con conteo 1. En el mejor caso se detiene pronto, en el peor recorre las v ventas.
+- Total: 2v operaciones en el peor caso, O(v). Como el recorrido 1 es siempre completo, el mejor caso también es lineal.
+- Memoria: un contador por cliente distinto, O(d).
+- Alternativa por fuerza bruta (contar cuántas veces aparece el cliente de cada venta): O(v²) en tiempo y O(1) en memoria.
+
+### Patrón común
+Las tres funciones aplican el mismo intercambio: **gastan memoria (un Map) para bajar el tiempo de O(n²) a O(n)**. El Map guarda lo ya visto (precios, conteos de productos, conteos de clientes) y evita volver a recorrer los datos.
+
+| Función | Fuerza bruta | Con Map |
+|---|---|---|
+| `comboRegalo` | O(n²) tiempo, O(1) memoria | O(n) tiempo, O(n) memoria |
+| `productoEstrellaPorCiudad` | ≈ O(v · c · p) tiempo | O(v) tiempo, O(k) memoria |
+| `primerClienteUnico` | O(v²) tiempo, O(1) memoria | O(v) tiempo, O(d) memoria |
+
+### Notas
+- `n` y `v` son tamaños distintos: el catálogo tiene 8 productos y las ventas pueden ser miles. Por eso `comboRegalo` no se compara directamente con las otras dos.
+- "Lineal" describe el crecimiento, no el tiempo absoluto. Con 8 productos o 12 ventas la diferencia con fuerza bruta no se nota; se nota al crecer los datos (ver la tabla de mediciones de `clientesRecurrentes`).
+- O(1) por operación del Map es un promedio. En teoría, con muchas colisiones de hash, el peor caso se degrada, pero en la práctica con claves de texto o números no ocurre.

@@ -1,7 +1,9 @@
 const ventas  = require('./datos.js');
 const {generarVentas} = require("./generador.js");
+const catalogo = require("./catalogo.js");
 const assert = require("node:assert");
 const { performance } = require("node:perf_hooks");
+
 //CON SET
 function clientesRecurrentesSet(ventas) {
   const vistos = new Set();
@@ -46,6 +48,116 @@ function clientesRecurrentes(ventas) {
 }
 
 
+//comboRegalo()
+
+//FUERZA BRUTA
+function comboRegalo(catalogo, valor) {
+  for (let i = 0; i < catalogo.length; i++) {
+    for (let j = i + 1; j < catalogo.length; j++) {
+      if (catalogo[i].precio + catalogo[j].precio === valor) {
+        return [catalogo[i].producto, catalogo[j].producto];
+      }
+    }
+  }
+  return null; // ningún par suma el valor exacto
+}
+
+
+//OPTIMIZADA CON MAP
+function comboRegaloMap(catalogo, valor) {
+  const vistos = new Map(); // precio -> producto
+
+  for (const { producto, precio } of catalogo) {
+    const complemento = valor - precio;
+
+    if (vistos.has(complemento)) {
+      return [vistos.get(complemento), producto];
+    }
+    vistos.set(precio, producto);
+  }
+  return null; // ningún par suma el valor exacto
+}
+
+//PRUEBA MINI RETO 10
+
+const casos = [
+  { valor: 87000, nota: "combo único" },
+  { valor: 61000, nota: "combo único, en otra posición" },
+  { valor: 50000, nota: "sin combinación" },
+  { valor: 52000, nota: "26.000 + 26.000: no vale, es el mismo producto" },
+];
+
+for (const { valor, nota } of casos) {
+  console.log(`\nValor ${valor} (${nota})`);
+  console.log("  fuerza bruta:", comboRegalo(catalogo, valor));
+  console.log("  map:         ", comboRegaloMap(catalogo, valor));
+}
+
+
+//PRODUCTOS ESTRELLA
+// "medellín" y "Medellín" deben contar como la misma ciudad
+
+function normalizarCiudad(ciudad) {
+  return ciudad.trim().toLowerCase().replace(/(^|\s)\S/g, l => l.toUpperCase());
+}
+
+function productoEstrellaPorCiudad(ventas) {
+  // 1. Conteo: ciudad -> (producto -> veces que aparece)
+  const conteos = new Map();
+  for (const { ciudad, producto } of ventas) {
+    const c = normalizarCiudad(ciudad);
+    if (!conteos.has(c)) conteos.set(c, new Map());
+    const porProducto = conteos.get(c);
+    porProducto.set(producto, (porProducto.get(producto) || 0) + 1);
+  }
+
+  // 2. Máximo de cada ciudad
+  const estrellas = new Map();
+  for (const [ciudad, porProducto] of conteos) {
+    let mejor = null;
+    let max = 0;
+    for (const [producto, veces] of porProducto) {
+      if (veces > max) {   // ">" estricto: en empate gana el que apareció primero
+        mejor = producto;
+        max = veces;
+      }
+    }
+    estrellas.set(ciudad, { producto: mejor, veces: max });
+  }
+  return estrellas;
+}
+
+//TEST
+console.log(productoEstrellaPorCiudad(ventas));
+
+//PRIMER CLIENTE UNICO
+function primerClienteUnico(ventas) {
+  // Recorrido 1: contar cuántas veces aparece cada cliente
+  const conteo = new Map();
+  for (const { cliente } of ventas) {
+    conteo.set(cliente, (conteo.get(cliente) || 0) + 1);
+  }
+
+  // Recorrido 2: en orden de ventas, el primero cuyo conteo sea 1
+  for (const { cliente } of ventas) {
+    if (conteo.get(cliente) === 1) return cliente;
+  }
+  return null; // todos los clientes compraron más de una vez
+}
+
+//TEST
+console.log(primerClienteUnico(ventas));
+//PEUBAS RAPIDAS
+console.log(primerClienteUnico([]));  // null
+console.log(primerClienteUnico([
+  { cliente: "A" }, { cliente: "A" }, { cliente: "B" }, { cliente: "B" },
+])); // null: todos repiten
+console.log(primerClienteUnico([
+  { cliente: "A" }, { cliente: "B" }, { cliente: "A" }, { cliente: "C" },
+])); // 'B': A repite, B es el primero que no
+
+
+/*
 //TESTEO
 function verificar(nombre, datos) {
   const resultados = {
@@ -151,3 +263,6 @@ console.log("|---:|---:|---:|---:|---:|");
 for (const f of filas) {
   console.log(`| ${f.ventas.toLocaleString("es-CO")} | ${f.original} | ${f.set} | ${f.map} | ${f.recurrentes} |`);
 }
+
+*/
+
