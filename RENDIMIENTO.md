@@ -165,3 +165,51 @@ Funciones ordenadas de **mayor a menor riesgo cuando los datos crecen**. La #1 e
 Con 10.000 ventas, todas las funciones del archivo entregado responden en **menos de 1,3 ms** y escalan linealmente; no hay un cuello de botella de rendimiento en el código actual. Los riesgos reales son (1) el error de resultado de `ticketPromedio`, (2) cualquier implementación O(n²) de clientes recurrentes y (3) el uso repetido de consultas por ciudad en lugar de la agrupación única.
 
 Con 1.000.000 de ventas (ver "Proyección"), las funciones del archivo siguen entre 8 y 84 ms; la excepción es cualquier versión cuadrática de clientes recurrentes, que tardaría cerca de una hora (ver "Riesgos" y "Plan de optimización").
+## Comparación de tiempo total: v0.1 vs. v1.0
+
+Medición del tiempo total de ejecución del reporte completo (excluyendo la generación de datos) sobre la misma máquina con 10.000 y 100.000 ventas.
+
+| Volumen de ventas | Reporte v0.1 (ms) | Reporte v1.0 (ms) | Factor de mejora (v0.1 / v1.0) |
+|---:|---:|---:|---:|
+| 10.000 | *[Pendiente medir v0.1]* | 42,12 ms | — |
+| 100.000 | *[Pendiente medir v0.1]* | 255,08 ms | — |
+
+### Observaciones de la medición v1.0
+- **Escalamiento:** Al pasar de 10.000 a 100.000 ventas (×10), el tiempo total de v1.0 pasó de **42,12 ms** a **255,08 ms** (≈ ×6,06), manteniendo un comportamiento lineal/cuasi-lineal frente al crecimiento cuadrático $O(n^2)$ de las versiones anteriores con ciclos anidados e `includes()`[cite: 1].
+- **Mayor peso en 100.000 ventas:** `Producto estrella por ciudad` (64,49 ms), `Clientes recurrentes` (61,05 ms) y `Mejor semana` (47,56 ms) son las secciones más lentas del reporte.
+- **Nota sobre v0.1:** `bitacora.md` no registra el tiempo total del reporte v0.1 (solo mediciones parciales de `clientesRecurrentes` original: 483,66 ms en 10.000 ventas y omitida en 100.000)[cite: 1].
+
+
+## Tabla de complejidades del motor y funciones analíticas
+
+### Convenciones de notación
+- **n:** cantidad de ventas (o productos del catálogo en `comboRegalo` / `parMasCercano`)[cite: 1].
+- **v:** total de ventas registradas[cite: 1].
+- **d:** cantidad de clientes distintos ($d \le v$)[cite: 1].
+- **r:** cantidad de clientes recurrentes ($r \le d$)[cite: 1].
+- **c:** cantidad de ciudades distintas[cite: 1].
+- **p:** cantidad de productos distintos[cite: 1].
+- **k:** pares ciudad-producto distintos ($k \le v$) o tamaño de ventana en `mejorSemana` ($k = 7$ días)[cite: 1].
+- **d_dias:** cantidad de días analizados en `mejorSemana`[cite: 1].
+
+| Función / Algoritmo | Complejidad temporal | Complejidad espacial (extra) | Clase / Notas |
+|---|---|---|---|
+| `primeraVenta(ventas)` | $O(1)$[cite: 1] | $O(1)$[cite: 1] | Constante; acceso directo al primer elemento[cite: 1]. |
+| `totalVendido(ventas)` | $O(n)$[cite: 1] | $O(1)$[cite: 1] | Lineal; recorre el arreglo una vez con acumulador escalar[cite: 1]. |
+| `ventaMayor(ventas)` | $O(n)$[cite: 1] | $O(1)$[cite: 1] | Lineal; un recorrido y comparación por elemento[cite: 1]. |
+| `totalPorCiudad(ventas)` | $O(n)$[cite: 1] | $O(c)$ *(o $O(n)$ si agrupa listas)*[cite: 1] | Lineal en tiempo; espacio acotado por ciudades distintas $c$[cite: 1]. |
+| `totalCiudadUnaPasada(ventas, ciudad)` | $O(n)$[cite: 1] | $O(1)$[cite: 1] | Una sola pasada sin crear arreglos intermedios[cite: 1]. |
+| `totalCiudadCadena(ventas, ciudad)` | $O(n)$[cite: 1] | $O(n)$[cite: 1] | Cuatro etapas encadenadas (`map` / `filter` / `map` / `reduce`) y 3 arreglos nuevos[cite: 1]. |
+| `clientesRecurrentes` (original / bruta + `includes`) | $O(n^2)$[cite: 1] | $O(r)$[cite: 1] | Cuadrática por bucles anidados y búsqueda lineal con `includes()`[cite: 1]. |
+| `clientesRecurrentesSet(ventas)` | $O(n)$[cite: 1] | $O(d + r)$[cite: 1] | Lineal en tiempo usando `Set` (`vistos` y `recurrentes`)[cite: 1]. |
+| `clientesRecurrentesMap(ventas)` | $O(n)$[cite: 1] | $O(d + r)$[cite: 1] | Lineal en tiempo usando `Map` con contador por cliente[cite: 1]. |
+| `primerClienteUnico(ventas)` (con `Map`) | $O(v)$[cite: 1] | $O(d)$[cite: 1] | Lineal (dos pasadas de conteo/búsqueda sobre $v$ ventas)[cite: 1]. |
+| `primerClienteUnicoBruta(ventas)` | $O(v^2)$[cite: 1] | $O(1)$[cite: 1] | Cuadrática; cuenta repeticiones recorriendo por cada venta[cite: 1]. |
+| `productoEstrellaPorCiudad(ventas)` (con `Map`) | $O(v)$[cite: 1] | $O(k)$[cite: 1] | Lineal en ventas; acumula por ciudad/producto y elige máximo por ciudad[cite: 1]. |
+| `productoEstrellaPorCiudad` (sin `Map`) | $\approx O(v \cdot c \cdot p)$[cite: 1] | $O(1)$ *(según filtrado)*[cite: 1] | Alternativa de referencia filtrando por ciudad y contando productos[cite: 1]. |
+| `comboRegaloMap(catalogo, valor)` | $O(n)$[cite: 1] | $O(n)$[cite: 1] | Lineal; busca complemento exacto en una pasada usando `Map`[cite: 1]. |
+| `comboRegalo` (fuerza bruta) | $O(n^2)$[cite: 1] | $O(1)$[cite: 1] | Cuadrática; evalúa pares de productos del catálogo[cite: 1]. |
+| `parMasCercano(catalogo, presupuesto)` (dos punteros) | $O(p \log p)$[cite: 1] | $O(p)$[cite: 1] | Linealítmica; copia + ordenamiento $O(p \log p)$ y dos punteros $O(p)$[cite: 1]. |
+| `parMasCercanoBruta(catalogo, presupuesto)` | $O(p^2)$[cite: 1] | $O(1)$[cite: 1] | Cuadrática; evalúa todas las parejas para mayor suma $\le$ presupuesto[cite: 1]. |
+| `mejorSemana(dias, k)` (ventana deslizante) | $O(d)$[cite: 1] | $O(1)$[cite: 1] | Lineal en días; suma inicial de $k$ y ajuste de 2 operaciones por avance[cite: 1]. |
+| `mejorSemanaBruta(dias, k)` | $O((d - k + 1) \cdot k) \approx O(d \cdot k)$[cite: 1] | $O(1)$[cite: 1] | Hasta cuadrática si $k$ crece con $d$; recalcula cada ventana desde cero[cite: 1]. |

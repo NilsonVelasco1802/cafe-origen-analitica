@@ -80,6 +80,7 @@ function comboRegaloMap(catalogo, valor) {
 
 //PRUEBA MINI RETO 10
 
+/*
 const casos = [
   { valor: 87000, nota: "combo único" },
   { valor: 61000, nota: "combo único, en otra posición" },
@@ -92,7 +93,7 @@ for (const { valor, nota } of casos) {
   console.log("  fuerza bruta:", comboRegalo(catalogo, valor));
   console.log("  map:         ", comboRegaloMap(catalogo, valor));
 }
-
+*/
 
 //PRODUCTOS ESTRELLA
 // "medellín" y "Medellín" deben contar como la misma ciudad
@@ -128,7 +129,7 @@ function productoEstrellaPorCiudad(ventas) {
 }
 
 //TEST
-console.log(productoEstrellaPorCiudad(ventas));
+//console.log(productoEstrellaPorCiudad(ventas));
 
 //PRIMER CLIENTE UNICO
 function primerClienteUnico(ventas) {
@@ -145,6 +146,195 @@ function primerClienteUnico(ventas) {
   return null; // todos los clientes compraron más de una vez
 }
 
+
+//La mejor racha y el presupuesto exacto
+const ventasDiarias = [
+  320, 410, 280, 390, 510, 620, 700, 300, 290, 450,
+  480, 530, 610, 680, 350, 330, 420, 470, 560, 640,
+  710, 380, 360, 440, 500, 590, 650, 720, 400, 370,
+];
+
+// FUERZA BRUTA: suma cada bloque de k días desde cero
+function mejorSemanaBruta(dias, k) {
+  if (k <= 0 || k > dias.length) return null;
+
+  let mejor = null;
+  for (let inicio = 0; inicio + k <= dias.length; inicio++) {
+    let suma = 0;
+    for (let i = inicio; i < inicio + k; i++) {
+      suma += dias[i];
+    }
+    // ">" estricto: en empate gana la primera semana
+    if (mejor === null || suma > mejor.total) {
+      mejor = { inicio, fin: inicio + k - 1, total: suma };
+    }
+  }
+  return mejor;
+}
+//console.log(mejorSemanaBruta(ventasDiarias, 7));
+
+// VENTANA DESLIZANTE: una sola pasada, O(n) sin importar k
+function mejorSemana(dias, k) {
+  if (k <= 0 || k > dias.length) return null;
+
+  // 1. Primera ventana: se suma una sola vez
+  let suma = 0;
+  for (let i = 0; i < k; i++) suma += dias[i];
+
+  let mejor = { inicio: 0, fin: k - 1, total: suma };
+
+  // 2. Deslizar: entra dias[i], sale dias[i - k]
+  for (let i = k; i < dias.length; i++) {
+    suma += dias[i] - dias[i - k];
+
+    // ">" estricto: en empate gana la primera semana
+    if (suma > mejor.total) {
+      mejor = { inicio: i - k + 1, fin: i, total: suma };
+    }
+  }
+  return mejor;
+}
+//console.log(mejorSemana(ventasDiarias, 7));
+
+// DOS PUNTEROS: el par con la mayor suma que no supera el presupuesto
+function parMasCercano(catalogo, presupuesto) {
+  if (catalogo.length < 2) return null;
+
+  // Ordenamos una copia de menor a mayor precio (sin alterar el catálogo)
+  const ord = [...catalogo].sort((a, b) => a.precio - b.precio);
+
+  let izq = 0;
+  let der = ord.length - 1;
+  let mejor = null;
+
+  while (izq < der) {
+    const suma = ord[izq].precio + ord[der].precio;
+
+    if (suma > presupuesto) {
+      der--; // se pasa: el más caro no cabe con ningún otro
+    } else {
+      if (mejor === null || suma > mejor.suma) {
+        mejor = { productos: [ord[izq].producto, ord[der].producto], suma };
+      }
+      if (suma === presupuesto) break; // no se puede acercar más
+      izq++; // cabe: probar un barato más caro
+    }
+  }
+  return mejor; // null si ningún par cabe en el presupuesto
+}
+
+//Prueba con presupuestos de 100.000, 140.000 y 40.000,
+const casos = [
+  { presupuesto: 100000, nota: "cabe, pero no exacto" },
+  { presupuesto: 140000, nota: "suma exacta" },
+  { presupuesto: 40000, nota: "sin solución" },
+];
+
+for (const { presupuesto, nota } of casos) {
+  console.log(`\nPresupuesto ${presupuesto} (${nota})`);
+  console.log(parMasCercano(catalogo, presupuesto));
+}
+
+
+/*
+//TEST CONTRA LA FUERZA BRUTA
+// 1. Datos de septiembre
+assert.deepStrictEqual(mejorSemana(ventasDiarias, 7), mejorSemanaBruta(ventasDiarias, 7));
+assert.deepStrictEqual(mejorSemana(ventasDiarias, 7), { inicio: 23, fin: 29, total: 3670 });
+
+// 2. Casos borde
+for (const k of [0, -1, 31]) {
+  assert.strictEqual(mejorSemana(ventasDiarias, k), null);
+}
+assert.deepStrictEqual(mejorSemana(ventasDiarias, 1), mejorSemanaBruta(ventasDiarias, 1));   // un día
+assert.deepStrictEqual(mejorSemana(ventasDiarias, 30), mejorSemanaBruta(ventasDiarias, 30)); // todo el mes
+
+// 3. Arreglos aleatorios (con muchos empates posibles)
+for (let t = 0; t < 500; t++) {
+  const n = 1 + Math.floor(Math.random() * 60);
+  const dias = Array.from({ length: n }, () => Math.floor(Math.random() * 10) * 100);
+  const k = 1 + Math.floor(Math.random() * n);
+  assert.deepStrictEqual(mejorSemana(dias, k), mejorSemanaBruta(dias, k), `Difieren con n=${n}, k=${k}`);
+}
+console.log("✔ mejorSemana coincide con mejorSemanaBruta");
+
+
+//COMPROBAR AMBAS VERCIONES SEPTIEMBRE CON 100.000 DATOS AL AZAR (COMPRUEBA TIEMPOS)
+// Generador con semilla (mulberry32): mismos datos en cada ejecución
+function crearAzar(semilla) {
+  return function () {
+    semilla |= 0; semilla = (semilla + 0x6d2b79f5) | 0;
+    let t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generarDias(n, semilla = 42) {
+  const azar = crearAzar(semilla);
+  // Enteros entre 0 y 999 (miles de pesos): hay empates, y las sumas son exactas
+  return Array.from({ length: n }, () => Math.floor(azar() * 1000));
+}
+
+function mediana(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function medir(fn, dias, k, repeticiones) {
+  let resultado = fn(dias, k); // calentamiento
+  const tiempos = [];
+  for (let i = 0; i < repeticiones; i++) {
+    const t0 = performance.now();
+    resultado = fn(dias, k);
+    tiempos.push(performance.now() - t0);
+  }
+  return { ms: mediana(tiempos), resultado };
+}
+
+// 1. Datos de septiembre
+const bruta = mejorSemanaBruta(ventasDiarias, 7);
+const deslizante = mejorSemana(ventasDiarias, 7);
+assert.deepStrictEqual(deslizante, bruta);
+assert.deepStrictEqual(deslizante, { inicio: 23, fin: 29, total: 3670 });
+console.log("✔ Septiembre: coinciden", deslizante);
+
+// 2. 100.000 días al azar, varios tamaños de ventana
+const N = 100000;
+const dias = generarDias(N);
+assert.strictEqual(dias.length, N);
+
+const filas = [];
+for (const k of [7, 1000, 10000]) {
+  const repeticiones = k <= 1000 ? 5 : 3;
+  const a = medir(mejorSemanaBruta, dias, k, repeticiones);
+  const b = medir(mejorSemana, dias, k, repeticiones);
+
+  assert.deepStrictEqual(b.resultado, a.resultado, `Difieren con k=${k}`);
+
+  filas.push({
+    k,
+    bruta_ms: a.ms.toFixed(2),
+    deslizante_ms: b.ms.toFixed(2),
+    veces_mas_rapida: (a.ms / b.ms).toFixed(1),
+    inicio: b.resultado.inicio,
+    total: b.resultado.total,
+  });
+  console.log(`✔ ${N.toLocaleString("es-CO")} días, k=${k}: coinciden`);
+}
+
+console.table(filas);
+
+console.log("\n| k | Bruta (ms) | Deslizante (ms) | Veces más rápida |");
+console.log("|---:|---:|---:|---:|");
+for (const f of filas) {
+  console.log(`| ${f.k.toLocaleString("es-CO")} | ${f.bruta_ms} | ${f.deslizante_ms} | ${f.veces_mas_rapida} |`);
+}
+*/
+
+/*
+
 //TEST
 console.log(primerClienteUnico(ventas));
 //PEUBAS RAPIDAS
@@ -155,7 +345,7 @@ console.log(primerClienteUnico([
 console.log(primerClienteUnico([
   { cliente: "A" }, { cliente: "B" }, { cliente: "A" }, { cliente: "C" },
 ])); // 'B': A repite, B es el primero que no
-
+*/
 
 /*
 //TESTEO
@@ -266,3 +456,16 @@ for (const f of filas) {
 
 */
 
+module.exports = {
+  clientesRecurrentes,
+  clientesRecurrentesSet,
+  comprasPorCliente,
+  productoEstrellaPorCiudad,
+  primerClienteUnico,
+  comboRegalo,
+  comboRegaloMap,
+  parMasCercano,
+  ventasDiarias,
+  mejorSemanaBruta,
+  mejorSemana,
+};

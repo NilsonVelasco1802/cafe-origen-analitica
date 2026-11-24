@@ -726,7 +726,7 @@ La cadena habría ganado si la función fuera mucho más compleja, con muchas et
 |---:|---:|---:|---:|---:|
 | 1.000 | 4.17 | 0.06 | 0.09 | 261 |
 | 10.000 | 483.66 | 0.66 | 0.52 | 2644 |
-| 100.000 | omitida | 11.37 | 10.19 | 26730 |
+| 100.000 | omitida | 11.37 | 19 | 26730 |
 
 - Al pasar de 1.000 a 10.000 ventas (×10), la original tardó ×116: crecimiento cuadrático, O(n²).
 - Set y Map crecieron entre ×6 y ×20 en cada salto de ×10: crecimiento aproximadamente lineal, O(n). Con sub-milisegundos hay ruido, así que no conviene leer los saltos con demasiada precisión.
@@ -844,3 +844,197 @@ Las tres funciones aplican el mismo intercambio: **gastan memoria (un Map) para 
 - `n` y `v` son tamaños distintos: el catálogo tiene 8 productos y las ventas pueden ser miles. Por eso `comboRegalo` no se compara directamente con las otras dos.
 - "Lineal" describe el crecimiento, no el tiempo absoluto. Con 8 productos o 12 ventas la diferencia con fuerza bruta no se nota; se nota al crecer los datos (ver la tabla de mediciones de `clientesRecurrentes`).
 - O(1) por operación del Map es un promedio. En teoría, con muchas colisiones de hash, el peor caso se degrada, pero en la práctica con claves de texto o números no ocurre.
+
+
+### Las tres primeras posiciones de la ventana (k = 7)
+
+Datos: los primeros 9 días de septiembre, en miles de pesos.
+
+```
+Día          1     2     3     4     5     6     7     8     9
+Ventas     320   410   280   390   510   620   700   300   290
+
+Posición 1 (días 1 a 7)
+Ventas     320   410   280   390   510   620   700   300   290
+         └────────────────────────────────────────┘
+         Total = 3.230   (suma completa, se calcula una sola vez)
+
+Posición 2 (días 2 a 8)
+Ventas     320   410   280   390   510   620   700   300   290
+               └────────────────────────────────────────┘
+         Sale: 320 | Entra: 300
+         Total = 3.230 − 320 + 300 = 3.210
+
+Posición 3 (días 3 a 9)
+Ventas     320   410   280   390   510   620   700   300   290
+                     └────────────────────────────────────────┘
+         Sale: 410 | Entra: 290
+         Total = 3.210 − 410 + 290 = 3.090
+```
+
+| Posición | Días | Sale | Entra | Cálculo | Total | ¿Mejor hasta ahora? |
+|---:|---|---:|---:|---|---:|---|
+| 1 | 1 a 7 | | | 320 + 410 + 280 + 390 + 510 + 620 + 700 | 3.230 | Sí (primera) |
+| 2 | 2 a 8 | 320 | 300 | 3.230 − 320 + 300 | 3.210 | No |
+| 3 | 3 a 9 | 410 | 290 | 3.210 − 410 + 290 | 3.090 | No |
+
+**Qué se ve en el dibujo**
+- La ventana avanza un día a la derecha: pierde el día más antiguo (el de la
+  izquierda) y gana uno nuevo (el de la derecha).
+- Los otros 6 días de la ventana son los mismos, por eso no se vuelven a sumar.
+- Solo la posición 1 requiere 7 sumas. Las posiciones 2 y 3 cuestan 2
+  operaciones cada una (una resta y una suma).
+- Con la fuerza bruta, las posiciones 2 y 3 también costarían 7 sumas cada una,
+  y se repetiría el trabajo sobre días que ya se habían sumado.
+- Tras las tres primeras posiciones el mejor sigue siendo la 1 (3.230). En la
+  posición 4 (días 4 a 10) el total sube a 3.260 y pasa a ser el nuevo mejor.
+
+
+### Pruebas de parMasCercano (dos punteros)
+
+| Presupuesto | Resultado | Suma | Iteraciones (punteros) | Comparaciones (bruta) |
+|---:|---|---:|---:|---:|
+| 100.000 | Filtros + Huila 1 kg | 97.000 | 7 | 28 |
+| 140.000 | Sierra 500 g + Prensa francesa | 140.000 | 6 | 28 |
+| 40.000 | null | | 7 | 28 |
+
+**Traza de parMasCercano(catalogo, 100000)**
+
+| Iter. | izq | der | Suma | ¿Cabe? | Acción |
+|---:|---|---|---:|---|---|
+| 1 | Filtros 18.000 | Molino 120.000 | 138.000 | No | der-- |
+| 2 | Filtros 18.000 | Prensa 95.000 | 113.000 | No | der-- |
+| 3 | Filtros 18.000 | Huila 1 kg 79.000 | 97.000 | Sí | Mejor = 97.000, izq++ |
+| 4 | Nariño 26.000 | Huila 1 kg 79.000 | 105.000 | No | der-- |
+| 5 | Nariño 26.000 | Sierra 45.000 | 71.000 | Sí | No mejora, izq++ |
+| 6 | Taza 35.000 | Sierra 45.000 | 80.000 | Sí | No mejora, izq++ |
+| 7 | Huila 500 g 42.000 | Sierra 45.000 | 87.000 | Sí | No mejora, izq++ |
+| fin | | | | | Punteros se cruzan |
+
+**Observaciones**
+- Con 100.000 no existe suma exacta; el algoritmo recorre todo y devuelve la
+  mayor suma que cabe (97.000, a 3.000 del presupuesto).
+- Con 140.000 hay suma exacta (45.000 + 95.000). Antes de llegar a ella
+  el algoritmo registra 138.000 y 137.000 no la supera; al encontrar 140.000
+  corta con `break`. Esto confirma que el primer par que cabe no tiene por
+  qué ser el mejor.
+- Con 40.000 el puntero derecho retrocede hasta cruzarse con el izquierdo,
+  porque incluso el par más barato (18.000 + 26.000 = 44.000) se pasa. Devuelve null.
+- Los tres resultados coinciden con la fuerza bruta (en el de 140.000 incluso
+  en el mismo par).
+- En los tres casos el número de iteraciones es menor que n (8), mientras que
+  la fuerza bruta siempre prueba 28 pares en el peor caso. Con 8 productos
+  la diferencia no se nota; se nota con catálogos grandes.
+
+
+  ## Clasificación de complejidad: ventana deslizante y dos punteros
+
+Notación:
+- **d** = días del arreglo `dias`
+- **k** = tamaño de la ventana
+- **p** = productos del catálogo
+- Una comparación o suma entre números cuesta O(1).
+
+### Resumen
+
+| Función | Tiempo | Memoria extra | Clase |
+|---|---|---|---|
+| `mejorSemanaBruta(dias, k)` | O((d − k + 1) · k) ≈ O(d·k) | O(1) | Hasta cuadrática |
+| `mejorSemana(dias, k)` | O(d) | O(1) | Lineal |
+| `parMasCercano(catalogo, presupuesto)` | O(p log p) | O(p) | Linealítmica |
+| ↳ ordenar la copia | O(p log p) | O(p) | |
+| ↳ recorrido con dos punteros | O(p) | O(1) | Lineal |
+| `parMasCercanoBruta` (referencia) | O(p²) | O(1) | Cuadrática |
+
+### Detalle por función
+
+**mejorSemanaBruta**
+- Hay d − k + 1 ventanas y cada una se suma desde cero con k operaciones.
+- Si k es fijo y pequeño (k = 7) se comporta casi como O(d), pero con una constante k veces mayor.
+- Si k crece con d (por ejemplo k = d/2) pasa a ser O(d²).
+- Memoria: solo `suma`, los índices y el objeto `mejor`, O(1).
+
+**mejorSemana**
+- k sumas para la primera ventana y d − k desplazamientos de 2 operaciones: k + 2(d − k) ≤ 2d, es decir, O(d) sin importar k.
+- Memoria: O(1). Cada vez que mejora se crea un objeto `mejor`, pero solo se conserva uno.
+
+**parMasCercano**
+- **Ordenar:** `[...catalogo].sort(...)` cuesta O(p log p) en tiempo. Es la parte dominante.
+- **Copiar:** `[...catalogo]` cuesta O(p) en tiempo y O(p) en memoria. Se hace para no alterar el catálogo original.
+- **Dos punteros:** cada iteración descarta un producto (`der--` o `izq++`), así que hay como máximo p − 1 iteraciones: O(p).
+- **Total:** O(p log p) + O(p) = **O(p log p)**. Memoria: O(p) por la copia (el ordenamiento de JavaScript también puede necesitar un búfer auxiliar de hasta O(p)).
+- **Si el catálogo ya viniera ordenado** y se omitiera la copia, la función sería O(p) en tiempo y O(1) en memoria. En V8, `sort` detecta tramos ya ordenados, por lo que ordenar un arreglo ordenado también tiende a O(p), pero eso depende del motor y no conviene darlo por hecho.
+
+### Cuánto pesa el ordenamiento
+
+| p (productos) | Pares de la fuerza bruta: p(p − 1)/2 | Ordenar: ≈ p·log₂(p) | Dos punteros: ≤ p − 1 |
+|---:|---:|---:|---:|
+| 8 | 28 | 24 | 7 |
+| 1.000 | 499.500 | ≈ 10.000 | 999 |
+| 100.000 | ≈ 5.000.000.000 | ≈ 1.700.000 | 99.999 |
+
+- El recorrido con dos punteros es mucho más barato que el ordenamiento. El costo total lo fija ordenar.
+- Con 8 productos, ordenar (≈ 24 comparaciones) cuesta casi lo mismo que la fuerza bruta (28). Aquí la optimización no se nota. Se nota con catálogos grandes.
+- Las cifras de la tabla son órdenes de magnitud calculados, no mediciones.
+
+### Si se consultan varios presupuestos
+Para q presupuestos sobre el mismo catálogo:
+- Ordenando en cada llamada (como está hoy): O(q · p log p).
+- Ordenando una sola vez y reutilizando el arreglo: O(p log p + q · p).
+
+Es el único caso donde conviene sacar el ordenamiento de la función.
+
+### Comparación de las tres formas de buscar "dos productos"
+
+| Función | Problema | Tiempo | Memoria extra |
+|---|---|---|---|
+| `comboRegalo` (bruta) | suma exacta | O(p²) | O(1) |
+| `comboRegaloMap` | suma exacta | O(p) | O(p) |
+| `parMasCercano` | mayor suma ≤ presupuesto | O(p log p) | O(p) |
+
+- El Map resuelve "suma **exacta**": pregunta si existe un precio concreto. No sirve directamente para "lo más cerca posible sin pasarse", porque eso exige comparar órdenes, no buscar igualdad. Por eso aquí se usa el orden.
+- Cada técnica paga algo distinto: el Map paga memoria (O(p)), los dos punteros pagan un ordenamiento previo y la ventana deslizante no paga nada, porque aprovecha que las sumas consecutivas comparten k − 1 días.
+
+### Notas
+- La ventana deslizante solo funciona porque la suma se puede "deshacer" restando. Para un máximo por ventana, restar no sirve.
+- Los dos punteros solo son correctos si los precios están ordenados. Sin ordenar, el algoritmo daría resultados erróneos.
+- Estas son complejidades asintóticas. Con 30 días o 8 productos las diferencias no se perciben; se perciben al crecer los datos.
+
+
+
+# Cierre de bitácora — Resumen de la semana y estrategias de optimización
+
+## 1. Resumen de lo construido por cada MiniReto
+
+1. **MiniReto 1 — Exploración, limpieza y métricas fundamentales (`datos.js`, `analitica.js`):**
+   - Se definió el diccionario de datos del negocio y se diagnosticaron anomalías en los registros reales del Día 1 (ventas con cantidad `0`, inconsistencias de mayúsculas/espacios en ciudades como `"medellin"` y fechas en texto).
+   - Se construyeron las funciones base (`totalVendido`, `unidadesVendidas`, `ventasPorCiudad`, `ventaMayor`, `ticketPromedio`) y se validaron mediante tablas de traza manual.
+   - Se implementaron versiones declarativas con métodos de arreglo (`filter`, `map`, `reduce`, `sort`, `slice`) para agrupaciones (`totalPorCiudad`, `unidadesPorProducto`, `topProductosPorValor`) y se corrigieron defectos críticos de inicialización (`NaN` al acumular o dividir entre cero en días sin ventas).
+
+2. **MiniReto 2 — Análisis de complejidad y conteo de operaciones (`complejidadTotales.js`, `recurrente.js`):**
+   - Se instrumentó el código para contar operaciones reales frente a distintos volúmenes de datos ($100$ a $100.000$ ventas), contrastando funciones de tiempo constante $O(1)$ (`primeraVenta`) frente a lineales $O(n)$.
+   - Se identificó el cuello de botella cuadrático $O(n^2)$ en `clientesRecurrentes` (doble ciclo anidado haciendo $\frac{n(n-1)}{2}$ comparaciones más el costo oculto lineal de `recurrentes.includes()`), demostrando cómo el reporte degradaba a decenas de segundos con $100.000$ ventas.
+
+3. **MiniReto 3 — Eficiencia en memoria y recorrido único (`totalCiudadUnaPasada`):**
+   - Se comparó el encadenamiento de métodos (`map` $\rightarrow$ `filter` $\rightarrow$ `map` $\rightarrow$ `reduce`), que realiza 4 recorridos y reserva 3 arreglos intermedios ($O(n)$ en espacio), frente a una implementación de una sola pasada con ciclo `for` ($O(1)$ en espacio adicional), reduciendo la presión sobre el recolector de basura.
+
+4. **MiniReto 4 — Estructuras Hash (`Map` y `Set`) para consultas lineales (`optimizadas.js`):**
+   - Se rediseñaron las consultas de búsqueda y agrupación intensiva utilizando tablas hash (`Map` y `Set`), transformando algoritmos cuadráticos en lineales: `clientesRecurrentesSet/Map`, `comboRegaloMap`, `productoEstrellaPorCiudad` y `primerClienteUnico`.
+
+5. **MiniReto 5 — Algoritmos de ventana deslizante y dos punteros (`optimizadas.js`, `reporte.js`):**
+   - Se implementó `mejorSemana(dias, k)` para hallar la ventana de 7 días consecutivos con mayor facturación sin recalcular sumas repetidas.
+   - Se implementó `parMasCercano(catalogo, presupuesto)` para encontrar la combinación de dos productos que más se acerca a un presupuesto sin superarlo, integrando todas las métricas en el reporte completo (`v1.0`) con medición de tiempos por sección.
+
+---
+
+## 2. Estrategias de resolución aplicadas en cada optimización
+
+| Problema / Función | Cuello de botella original | Estrategia de resolución aplicada | Mejora de complejidad |
+| :--- | :--- | :--- | :--- |
+| **Totales filtrados por ciudad** (`totalCiudad`) | Encadenamiento de 4 métodos que copiaba objetos y creaba 3 arreglos intermedios. | **Fusión de recorridos (Una sola pasada):** acumular directamente en una variable escalar normalizando el texto al vuelo, eliminando memoria auxiliar. | Tiempo: $O(n) \rightarrow O(n)$ (4x menos pasadas)<br>Espacio: $O(n) \rightarrow O(1)$ |
+| **Clientes recurrentes** (`clientesRecurrentes`) | Doble bucle anidado + búsqueda lineal con `includes()` sobre el arreglo de resultados. | **Intercambio tiempo-memoria con `Set` / `Map`:** registrar clientes vistos en una estructura hash con búsqueda promedio $O(1)$ en una única pasada. | Tiempo: $O(n^2) \rightarrow O(n)$<br>Espacio: $O(r) \rightarrow O(d + r)$ |
+| **Combo de regalo exacto** (`comboRegalo`) | Fuerza bruta comparando cada producto contra todos los demás del catálogo. | **Búsqueda de complemento con `Map`:** en un solo recorrido, calcular `complemento = objetivo - precio` y verificar si ya fue visto en el `Map`. | Tiempo: $O(n^2) \rightarrow O(n)$<br>Espacio: $O(1) \rightarrow O(n)$ |
+| **Producto estrella por ciudad** (`productoEstrellaPorCiudad`) | Filtrar ventas por cada ciudad y recontar productos repetidamente. | **Indexación anidada con `Map`:** acumular frecuencias `(ciudad -> producto -> conteo)` en una sola pasada sobre las ventas y extraer el máximo por ciudad. | Tiempo: $O(v \cdot c \cdot p) \rightarrow O(v)$<br>Espacio: $O(k)$ |
+| **Primer cliente con compra única** (`primerClienteUnico`) | Contar apariciones de cada cliente recorriendo todo el historial por cada registro. | **Conteo en dos pasadas con `Map`:** primera pasada para construir el mapa de frecuencias por cliente y segunda pasada para retornar el primero con conteo `1`. | Tiempo: $O(v^2) \rightarrow O(v)$<br>Espacio: $O(1) \rightarrow O(d)$ |
+| **Mejor semana de ventas** (`mejorSemana`) | Sumar desde cero los 7 días de cada ventana posible ($O(d \cdot k)$). | **Ventana deslizante (Sliding Window):** calcular la suma de los primeros $k$ días una sola vez y, al avanzar un día, restar el elemento que sale por la izquierda y sumar el que entra por la derecha. | Tiempo: $O(d \cdot k) \rightarrow O(d)$<br>Espacio: $O(1) \rightarrow O(1)$ |
+| **Par más cercano al presupuesto** (`parMasCercano`) | Evaluar todos los pares posibles del catálogo mediante fuerza bruta. | **Ordenamiento + Dos punteros (Two Pointers):** ordenar una copia del catálogo por precio ($O(p \log p)$) y mover dos índices desde los extremos (`izq++` si la suma cabe para buscar una mayor, `der--` si excede el presupuesto). | Tiempo: $O(p^2) \rightarrow O(p \log p)$<br>Espacio: $O(1) \rightarrow O(p)$ |
